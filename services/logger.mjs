@@ -3,6 +3,7 @@ import { getTimestamp } from "../../../tools/date.mjs";
 import Request from "../models/request.mjs";
 import Setup from "../models/setup.mjs";
 import CoreSetup from "../../../models/setup.mjs"
+import Route from "../models/route.mjs";
 
 let requestCache = [];
 let sensitiveProperties = ["token", "password", "email"]
@@ -55,19 +56,21 @@ async function runJob(){
     return;
   }
 
+  let requests = Route.filterRequests(requestCache);
+
   let destination = setup.destination;
   if(destination){
     try{
       await destination.post("logger/requests/log", {
         instance: CoreSetup.lookup().identifier||null, 
-        requests: requestCache
+        requests
       });
       requestCache = [];
     } catch(err){
       new LogEntry(`Failed to send logs to remote. Will attempt again next time and not clear cache. Error: ${JSON.stringify(err)}`, "logger")
     }
   } else {
-    for(let entry of requestCache){
+    for(let entry of requests){
       let request = new Request()
       for(let key of Object.keys(entry)){
         if(key == "id" || key == "_id") continue;

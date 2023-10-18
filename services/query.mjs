@@ -50,16 +50,21 @@ export function queryRequests(req){
                      }, {usedUsers: new Set(), result: []}).result
   }
 
+  
+  if(results === null) results = q.all;
+
+  if(req.last && !isNaN(req.last)){
+    results = results.slice(Math.max(results.length - req.last, 0))
+  }
+
   let retTypes = Array.isArray(req.return) ? req.return : req.return ? [req.return] : ["requests"]
   let ret = []
   for(let retType of retTypes){
     switch(retType){
       case "paths":
-        if(results === null) results = q.all;
         ret.push([...new Set(results.map(r => r.path))])
         break;
       case "users":
-        if(results === null) results = q.all;
         ret.push([...new Set(results.map(r => r.userId))])
         break;
       case "count":
@@ -67,7 +72,7 @@ export function queryRequests(req){
         break;
       case "requests":
       default:
-        ret.push((results !== null ? results : q.all).map(r => r.toObj()));
+        ret.push((results).map(r => r.toObj()));
         break;
     }
   }

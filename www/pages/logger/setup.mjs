@@ -2,13 +2,27 @@ const elementName = 'logger-setup-page'
 import {on, off} from "/system/events.mjs"
 import api from "/system/api.mjs"
 import "/components/field-edit.mjs"
+import "/components/collapsible-card.mjs"
+import "/components/field-edit-inline.mjs"
+import "/components/field-ref.mjs"
+import "/components/context-menu.mjs"
 
 const template = document.createElement('template');
 template.innerHTML = `
+  <link rel='stylesheet' href='/css/global.css'>
+  <link rel='stylesheet' href='/css/searchresults.css'>
   <style>
     #container{
       padding: 10px;
     }
+    collapsible-card > div{
+      padding: 10px;
+    }
+    collapsible-card{
+      margin-bottom: 10px;
+      display: block;
+    }
+    #routes-tab tbody td{padding-top: 5px;padding-bottom:5px;}
   </style>  
 
   <div id="container">
@@ -19,6 +33,49 @@ template.innerHTML = `
 
     <p>If you want to store a log of requests made to this instance, check the following checkbox. If you have chosen a destination above, the log will be sent to that instance - otherwise it will be stored locally.</p>
     Save local requests: <field-edit type="checkbox" id="saveLocal"></field-edit>
+
+    <br><br>
+
+    <collapsible-card open>
+      <span slot="title">Routes</span>
+      <div>
+        <p>Setup which routes to log. The default is to log, so any request not matching a route, is logged. Note that if log entries are being forwarded, both this instance and the destination checks them against their respective routes.</p>
+        <table id="routes-tab">
+          <thead>
+              <tr class="result">
+                <th>Idx</th>
+                <th>Path</th>
+                <th>Role</th>
+                <th>Method</th>
+                <th>Action</th>
+                <th></th>
+              </tr>
+          </thead>
+          <tbody id="routes" class="container">
+          </tbody>
+        </table>
+        <button class="styled" id="new-route-btn">Add route</button>
+      </div>
+    </collapsible-card>
+
+    <collapsible-card open>
+      <span slot="title">Live stream</span>
+      <div>
+        <p>The following is the last 15 log records stored (ie. those that conforms to the routes above):</p>
+        <table id="stream-tab">
+          <thead>
+              <tr class="result">
+                <th>Timestamp</th>
+                <th>Method</th>
+                <th>Path</th>
+                <th>User</th>
+              </tr>
+          </thead>
+          <tbody id="stream" class="container">
+          </tbody>
+        </table>
+      </div>
+    </collapsible-card>
   </div>
 `;
 
@@ -30,6 +87,20 @@ class Element extends HTMLElement {
     this.shadowRoot.appendChild(template.content.cloneNode(true));
 
     this.refreshData = this.refreshData.bind(this);
+    this.newRoute = this.newRoute.bind(this)
+    this.refreshStream = this.refreshStream.bind(this)
+
+    this.shadowRoot.getElementById("new-route-btn").addEventListener("click", this.newRoute)
+
+    this.shadowRoot.getElementById("routes").addEventListener("item-clicked", e => {
+      let id = e.detail.menu.closest("tr.route")?.getAttribute("data-id")
+      if(!id) return;
+      switch(e.detail.button){
+        case "delete":
+          api.del(`logger/routes/${id}`).then(this.refreshData);
+          break;
+      }
+    })
   }
 
   async refreshData(){
@@ -39,14 +110,67 @@ class Element extends HTMLElement {
     this.shadowRoot.getElementById("saveLocal").setAttribute("value", !!setup.saveLocal)
 
     this.shadowRoot.querySelectorAll("field-edit:not([disabled])").forEach(e => e.setAttribute("patch", `logger/setup`));
+
+
+    let routes = this.routes = await api.get("logger/routes")
+
+    this.shadowRoot.getElementById("routes").innerHTML = routes.sort((a,b) => a.orderIdx < b.orderIdx ? -1 : 1).map(r => `
+      <tr data-id="${r.id}" class="route result">
+        <td><field-edit-inline type="number" patch="logger/routes/${r.id}" field="orderIdx" value="${r.orderIdx}"></field-edit-inline></td>
+        <td><field-edit-inline type="text" patch="logger/routes/${r.id}" field="path" value="${r.path||""}"></field-edit-inline></td>
+        <td><field-edit-inline type="select" patch="logger/routes/${r.id}" field="role" value="${r.role||""}" lookup="role"></field-edit-inline></td>
+        <td>
+          <field-edit-inline type="select" patch="logger/routes/${r.id}" field="method" value="${r.method||""}">
+            <option value="">All</option>
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+            <option value="DELETE">DELETE</option>
+            <option value="PATCH">PATCH</option>
+            <option value="OPTION">OPTION</option>
+          </field-edit-inline>
+        </td>
+        <td>
+          <field-edit-inline type="select" patch="logger/routes/${r.id}" field="action" value="${r.action||""}">
+            <option value="log">Log request and stop</option>
+            <option value="ignore">Stop (don't log)</option>
+            <option value="nothing">Nothing</option>
+          </field-edit-inline>
+        </td>
+        <td>
+          <context-menu width="150px">
+            <span data-button="delete">Delete route</span>
+          </context-menu>
+        </td>
+      </tr>
+    `).join("")
+  }
+
+  async newRoute(){
+    await api.post(`logger/routes`, {})
+    this.refreshData()
+  }
+
+  async refreshStream(){
+    let log = await api.post("logger/requests/query", {last: 15})
+    log.reverse()
+    this.shadowRoot.getElementById("stream").innerHTML = log.map(r => `
+      <tr class="result">
+        <td>${r.timestamp.replace("T", " ").substring(0, 19)}</td>
+        <td>${r.method}</td>
+        <td>${r.path}</td>
+        <td>${r.userId ? `<field-ref ref="/setup/users/${r.userId}">${r.userId}</field-ref>` : ""}</td>
+      </tr>
+      `).join("")
   }
 
   connectedCallback() {
     on("changed-page", elementName, this.refreshData)
+    this.streamInterval = setInterval(this.refreshStream, 2000);
   }
 
   disconnectedCallback() {
     off("changed-page", elementName)
+    clearInterval(this.streamInterval)
   }
 }
 
