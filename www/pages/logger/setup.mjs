@@ -6,6 +6,10 @@ import "/components/collapsible-card.mjs"
 import "/components/field-edit-inline.mjs"
 import "/components/field-ref.mjs"
 import "/components/context-menu.mjs"
+import "/components/action-bar.mjs"
+import "/components/action-bar-item.mjs"
+import {showDialog} from "/components/dialog.mjs"
+import Toast from "/components/toast.mjs"
 
 const template = document.createElement('template');
 template.innerHTML = `
@@ -24,6 +28,10 @@ template.innerHTML = `
     }
     #routes-tab tbody td{padding-top: 5px;padding-bottom:5px;}
   </style>  
+
+  <action-bar>
+      <action-bar-item id="cleanup-btn">Clean-up</action-bar-item>
+  </action-bar>
 
   <div id="container">
     <h1>Logger setup</h1>
@@ -78,6 +86,17 @@ template.innerHTML = `
       </div>
     </collapsible-card>
   </div>
+
+  <dialog-component title="Cleanup" id="cleanup-dialog">
+    <h2>Cleanup by routes</h2>
+    <label for="cleanup-routes">Delete everything that doesn't match routes</label>
+    <input type="checkbox" id="cleanup-routes"></input>
+    <p>Note that this will forward routes to the destination server (if any) to aid in cleaning up</p>
+    <br><br>
+    <h2>Cleanup by date</h2>
+    <label for="cleanup-date">Delete everything older than</label>
+    <input id="cleanup-date" type="date"></input>
+  </dialog-component>
 `;
 
 class Element extends HTMLElement {
@@ -90,8 +109,10 @@ class Element extends HTMLElement {
     this.refreshData = this.refreshData.bind(this);
     this.newRoute = this.newRoute.bind(this)
     this.refreshStream = this.refreshStream.bind(this)
+    this.cleanup = this.cleanup.bind(this)
 
     this.shadowRoot.getElementById("new-route-btn").addEventListener("click", this.newRoute)
+    this.shadowRoot.getElementById("cleanup-btn").addEventListener("click", this.cleanup)
 
     this.shadowRoot.getElementById("routes").addEventListener("item-clicked", e => {
       let id = e.detail.menu.closest("tr.route")?.getAttribute("data-id")
@@ -119,7 +140,7 @@ class Element extends HTMLElement {
       <tr data-id="${r.id}" class="route result">
         <td><field-edit-inline type="number" patch="logger/routes/${r.id}" field="orderIdx" value="${r.orderIdx}"></field-edit-inline></td>
         <td><field-edit-inline type="text" patch="logger/routes/${r.id}" field="path" value="${r.path||""}"></field-edit-inline></td>
-        <td><field-edit-inline type="select" patch="logger/routes/${r.id}" field="role" value="${r.role||""}" lookup="role"></field-edit-inline></td>
+        <td><field-edit-inline type="text" patch="logger/routes/${r.id}" field="role" value="${r.role||""}"></field-edit-inline></td>
         <td>
           <field-edit-inline type="select" patch="logger/routes/${r.id}" field="method" value="${r.method||""}">
             <option value="">All</option>
@@ -159,10 +180,28 @@ class Element extends HTMLElement {
         <td>${r.timestamp.replace("T", " ").substring(0, 19)}</td>
         <td>${r.method}</td>
         <td>${r.path}</td>
-        <td>${r.userId}</td>
-        <td>${r.instance}</td>
+        <td>${r.userId||""}</td>
+        <td>${r.instance||""}</td>
       </tr>
       `).join("")
+  }
+  async cleanup(){
+    let dialog = this.shadowRoot.querySelector("#cleanup-dialog")
+
+    showDialog(dialog, {
+      show: () => this.shadowRoot.getElementById("cleanup-routes").focus(),
+      ok: async (val) => {
+        await api.post("logger/requests/cleanup", val)
+        new Toast({text: "Cleanup done"});
+      },
+      values: () => {return {
+        notMatchingRoutes: this.shadowRoot.getElementById("cleanup-routes").checked,
+        olderThanDate: this.shadowRoot.getElementById("cleanup-date").value
+      }},
+      close: () => {
+        this.shadowRoot.querySelectorAll("field-component input").forEach(e => e.value = '')
+      }
+    })
   }
 
   connectedCallback() {

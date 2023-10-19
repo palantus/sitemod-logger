@@ -17,14 +17,20 @@ export default (app) => {
     let setup = Setup.lookup();
     let destination = setup.destination;
 
-    let instance = req.body.instance
-                || APIKey.lookup(res.locals.authMethod?.apiKey?._id)?.identifier  // No idea why this lookup is needed, but it fails without
-                || "unknown";
+    let origin = {
+      identifier: req.body.origin?.identifier
+                    || APIKey.lookup(res.locals.authMethod?.apiKey?._id)?.identifier  // No idea why this lookup is needed, but it fails without
+                    || "unknown",
+      roles: req.body.origin?.roles||null
+    }
 
-    let requests = Route.filterRequests(req.body.requests);
+    let requests = Route.filterRequests(req.body.requests, origin);
 
     if(destination){
-      destination.post(`logger/requests/log`, {instance, requests}).then(result => res.json(result)).catch(err => null)
+      destination.post(`logger/requests/log`, {origin, requests}).then(result => res.json(result)).catch(err => {
+        res.status(500);
+        res.json({error: "Could not forward to logger destination"})
+      })
     } else {
       for(let entry of requests){
         let request = new Request()
@@ -32,7 +38,7 @@ export default (app) => {
           if(key == "id" || key == "_id") continue;
           request[key] = entry[key];
         }
-        request.instance = instance
+        request.instance = origin.identifier
       }
       res.json({success: true})
     }
@@ -42,12 +48,32 @@ export default (app) => {
     let setup = Setup.lookup();
     let destination = setup.destination;
     if(destination){
-      destination.post(`logger/requests/query`, req.body).then(result => res.json(result)).catch(err => null)
+      destination.post(`logger/requests/query`, req.body).then(result => res.json(result)).catch(err => {
+        res.status(500);
+        res.json({error: "Could not forward to logger destination"})
+      })
     } else {
       if(Array.isArray(req.body))
         res.json(req.body.map(queryRequests))
       else
         res.json(queryRequests(req.body))
+    }
+  });
+
+  route.post('/requests/cleanup', permission("logger.edit"), (req, res, next) => {
+    let setup = Setup.lookup();
+    let destination = setup.destination;
+    if(destination){
+      let info = JSON.parse(JSON.stringify(req.body));
+      if(info.routeSetups) info.routeSetups.push(Route.serializeLocalRoutes())
+      else info.routeSetups = [Route.serializeLocalRoutes()];
+      destination.post(`logger/requests/cleanup`, info).then(result => res.json(result)).catch(err => {
+        res.status(500);
+        res.json({error: "Could not forward to logger destination"})
+      })
+    } else {
+      Request.cleanup(req.body)
+      res.json({success: true})
     }
   });
 

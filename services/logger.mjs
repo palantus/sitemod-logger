@@ -62,7 +62,7 @@ async function runJob(){
   if(destination){
     try{
       await destination.post("logger/requests/log", {
-        instance: CoreSetup.lookup().identifier||null, 
+        origin: Route.serializeOriginInfo(), 
         requests
       });
       requestCache = [];

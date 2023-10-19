@@ -1,5 +1,7 @@
 import Entity, {query, nextNum}  from "entitystorage"
 import User from "../../../models/user.mjs";
+import CoreSetup from "../../../models/setup.mjs"
+import Role from "../../../models/role.mjs";
 
 export default class Route extends Entity {
 
@@ -26,32 +28,52 @@ export default class Route extends Entity {
     if(obj.orderIdx !== undefined && !isNaN(obj.orderIdx)) this.orderIdx = obj.orderIdx;
     if(obj.method !== undefined) this.method = typeof obj.method === "string" ? obj.method : null;
     if(obj.path !== undefined) this.path = typeof obj.path === "string" ? obj.path : null;
-    if(obj.role !== undefined) this.roleId = typeof obj.role === "string" ? obj.role : null;
+    if(obj.role !== undefined) this.role = typeof obj.role === "string" ? obj.role : null;
     if(obj.action !== undefined) this.action = typeof obj.action === "string" ? obj.action : "log";
     return this;
   }
 
-  static filterRequests(requests){
-    return requests.filter(r => Route.shouldLogRequest(r));
+  static filterRequests(requests, origin){
+    return requests.filter(r => Route.shouldLogRequest(r, origin));
   }
 
-  static shouldLogRequest(req){
+  static shouldLogRequest(req, origin){
     for(let route of Route.allSorted()){
-      if(!route.isRouteValidForRequest(req)) continue;
+      if(!Route.isRouteValidForRequest(req, origin, route)) continue;
       return route.action == "log" ? true : false;
     }
     return true;
   }
 
-  isRouteValidForRequest(req){
-    if(this.action == "nothing") return false;
+  static isRouteValidForRequest(req, origin, route){
+    if(route.action == "nothing") return false;
     try{
-      if(this.path && this.path != req.path && !new RegExp(this.path).test(req.path)) return false;
+      if(route.path && route.path != req.path && !new RegExp(route.path).test(req.path)) return false;
     } catch(err){
       return false;
     }
-    if(this.roleId && (!req.userId || !User.lookup(req.userId)?.roles.includes(this.roleId))) return false;
+    if(route.role){
+      if(!req.userId) return false;
+      if(origin?.roles && !origin.roles.find(r => r.id == route.role)?.users.includes(req.userId)) return false;
+      else if(!origin?.roles && !User.lookup(req.userId)?.roles.includes(route.role)) return false;
+    }
+    if(route.method && req.method != route.method) return false;
     return true;
+  }
+
+  static serializeLocalRoutes(){
+    return {
+      identifier: CoreSetup.lookup().identifier,
+      roles: Role.all().map(r => ({id: r.id, users: r.members.map(u => u.id)})),
+      routes: Route.allSorted().map(r => r.toObj())
+    }
+  }
+
+  static serializeOriginInfo(){
+    return {
+      identifier: CoreSetup.lookup().identifier || null,
+      roles: Role.all().map(r => ({id: r.id, users: r.members.map(u => u.id)}))
+    }
   }
 
   toObj(){
@@ -60,7 +82,7 @@ export default class Route extends Entity {
       orderIdx: this.orderIdx,
       method: this.method || null,
       path: this.path || null,
-      role: this.roleId || null,
+      role: this.role || null,
       action: this.action
     }
   }

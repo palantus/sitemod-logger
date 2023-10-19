@@ -1,4 +1,5 @@
 import Entity, {query}  from "entitystorage"
+import Route from "./route.mjs";
 
 class Request extends Entity {
 
@@ -12,6 +13,32 @@ class Request extends Entity {
 
   static all(){
     return query.type(Request).tag("logrequest").all
+  }
+
+  static cleanup({notMatchingRoutes, olderThanDate, routeSetups} = {}){
+    let routeSetupsAll;
+    reqloop: for(let req of Request.all()){
+      if(olderThanDate && olderThanDate > req.timestamp) {
+        req.delete();
+        continue reqloop;
+      }
+      if(notMatchingRoutes){
+        if(!routeSetupsAll){
+          routeSetupsAll = routeSetups || []
+          routeSetupsAll.push(Route.serializeLocalRoutes())
+        }
+        setupLoop: for(let routeSetup of routeSetupsAll){
+          routeLoop: for(let route of routeSetup.routes){
+            if(!Route.isRouteValidForRequest(req, routeSetup, route)) continue routeLoop;
+            if(route.action == "log") continue setupLoop;
+            else {
+              req.delete();
+              continue reqloop;
+            }
+          }
+        }
+      }
+    }
   }
 
   toObj(){
