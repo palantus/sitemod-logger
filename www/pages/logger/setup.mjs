@@ -159,7 +159,7 @@ class Element extends HTMLElement {
         <td>${r.timestamp.replace("T", " ").substring(0, 19)}</td>
         <td>${r.method}</td>
         <td>${r.path}</td>
-        <td>${r.userId ? `<field-ref ref="/setup/users/${r.userId}">${r.userId}</field-ref>` : ""}</td>
+        <td>${r.userId}</td>
         <td>${r.instance}</td>
       </tr>
       `).join("")
