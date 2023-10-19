@@ -69,6 +69,7 @@ template.innerHTML = `
                 <th>Method</th>
                 <th>Path</th>
                 <th>User</th>
+                <th>Instance</th>
               </tr>
           </thead>
           <tbody id="stream" class="container">
@@ -159,6 +160,7 @@ class Element extends HTMLElement {
         <td>${r.method}</td>
         <td>${r.path}</td>
         <td>${r.userId ? `<field-ref ref="/setup/users/${r.userId}">${r.userId}</field-ref>` : ""}</td>
+        <td>${r.instance}</td>
       </tr>
       `).join("")
   }
@@ -166,6 +168,7 @@ class Element extends HTMLElement {
   connectedCallback() {
     on("changed-page", elementName, this.refreshData)
     this.streamInterval = setInterval(this.refreshStream, 2000);
+    setTimeout(this.refreshStream, 20);
   }
 
   disconnectedCallback() {

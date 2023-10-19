@@ -21,6 +21,7 @@ class Request extends Entity {
       method: this.method,
       path: this.path,
       userId: this.userId,
+      instance: this.instance
     }
   }
 }
