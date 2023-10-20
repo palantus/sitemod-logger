@@ -37,6 +37,16 @@ export function queryRequests(req){
     results = results.filter(r => req.paths.includes(r.path))
   }
 
+  if(req.query && typeof req.query === "object"){
+    if(results === null) results = q.all;
+    results = results.filter(r => {
+      for(let key of Object.keys(req.query)){
+        if(r.query[key] != req.query[key]) return false;
+      }
+      return true;
+    })
+  }
+
   // The following is "group by"'s. Must be last.
 
   if(req.uniqueByUsers){
