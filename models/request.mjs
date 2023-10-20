@@ -15,9 +15,13 @@ class Request extends Entity {
     return query.type(Request).tag("logrequest").all
   }
 
+  static allByInstance(instanceName){
+    return query.type(Request).tag("logrequest").prop("instance", instanceName).all
+  }
+
   static cleanup({notMatchingRoutes, olderThanDate, routeSetups} = {}){
     let routeSetupsAll;
-    reqloop: for(let req of Request.all()){
+    reqloop: for(let req of Request.allByInstance(routeSetups?.[0]?.identifier||"local")){
       if(olderThanDate && olderThanDate > req.timestamp) {
         req.delete();
         continue reqloop;

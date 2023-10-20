@@ -88,6 +88,8 @@ template.innerHTML = `
   </div>
 
   <dialog-component title="Cleanup" id="cleanup-dialog">
+    <p>Cleanup is only done for the instance that you are on now (ie. those requests that originally was for this instance). If you want to cleanup for another instance, you need to go to that one and execute a cleanup.</p>
+    <br>
     <h2>Cleanup by routes</h2>
     <label for="cleanup-routes">Delete everything that doesn't match routes</label>
     <input type="checkbox" id="cleanup-routes"></input>
