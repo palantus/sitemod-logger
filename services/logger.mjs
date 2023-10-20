@@ -56,7 +56,8 @@ async function runJob(){
     return;
   }
 
-  let requests = Route.filterRequests(requestCache);
+  let count = requestCache.length > 100 ? 100 : requestCache.length;
+  let requests = Route.filterRequests(requestCache.slice(0, count));
 
   let destination = setup.destination;
   if(destination){
@@ -65,7 +66,7 @@ async function runJob(){
         origin: Route.serializeOriginInfo(), 
         requests
       });
-      requestCache = [];
+      requestCache = requestCache.slice(count)
     } catch(err){
       new LogEntry(`Failed to send logs to remote. Will attempt again next time and not clear cache. Error: ${JSON.stringify(err)}`, "logger")
     }
@@ -78,6 +79,11 @@ async function runJob(){
       }
       request.instance = "local";
     }
-    requestCache = []
+    requestCache = requestCache.slice(count)
+  }
+
+  if(count == 100){
+    new LogEntry("Sent 100 requests this time. Will send the next batch asap.", "logger")
+    setTimeout(runJob, 100);
   }
 }
