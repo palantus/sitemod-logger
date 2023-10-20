@@ -15,7 +15,8 @@ Send a POST to `logger/query` with one or more of the following filters in body 
 - after: Timestamp (eg.: 2023-10-11T11:57:04.092)
 - pathMatch: Regular expression on path
 - paths (array)
-- query (object)
+- query (object): Restrict result based on URL query parameters.
+- queryOptional (object): only restrict results, if the query parameters actually has a value and that value is different. If a given key isn't defined, the result is still returned.
 - uniqueByUsers (array): Will match the first request for a given user, that also matches all the above filters. Can be used to count how many users have called a certain endpoint.
 - return: the type to return. Can be one of: count, requests, users, paths. Can be an array for multiple types at once. Default is requests.
 

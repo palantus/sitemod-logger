@@ -47,6 +47,16 @@ export function queryRequests(req){
     })
   }
 
+  if(req.queryOptional && typeof req.queryOptional === "object"){
+    if(results === null) results = q.all;
+    results = results.filter(r => {
+      for(let key of Object.keys(req.queryOptional)){
+        if(r.query[key] && r.query[key] != req.queryOptional[key]) return false;
+      }
+      return true;
+    })
+  }
+
   // The following is "group by"'s. Must be last.
 
   if(req.uniqueByUsers){
