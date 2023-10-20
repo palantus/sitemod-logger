@@ -33,7 +33,7 @@ class Request extends Entity {
         }
         setupLoop: for(let routeSetup of routeSetupsAll){
           routeLoop: for(let route of routeSetup.routes){
-            if(!Route.isRouteValidForRequest(req, routeSetup, route)) continue routeLoop;
+            if(!Route.isRouteValidForRequest(req, routeSetupsAll[0], route)) continue routeLoop;
             if(route.action == "log") continue setupLoop;
             else {
               req.delete();
