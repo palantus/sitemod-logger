@@ -1,15 +1,15 @@
 const elementName = 'logger-setup-page'
-import {on, off} from "/system/events.mjs"
-import api from "/system/api.mjs"
-import "/components/field-edit.mjs"
-import "/components/collapsible-card.mjs"
-import "/components/field-edit-inline.mjs"
-import "/components/field-ref.mjs"
-import "/components/context-menu.mjs"
-import "/components/action-bar.mjs"
-import "/components/action-bar-item.mjs"
-import {showDialog} from "/components/dialog.mjs"
-import Toast from "/components/toast.mjs"
+import {on, off} from "../../system/events.mjs"
+import api from "../../system/api.mjs"
+import "../../components/field-edit.mjs"
+import "../../components/collapsible-card.mjs"
+import "../../components/field-edit-inline.mjs"
+import "../../components/field-ref.mjs"
+import "../../components/context-menu.mjs"
+import "../../components/action-bar.mjs"
+import "../../components/action-bar-item.mjs"
+import {showDialog} from "../../components/dialog.mjs"
+import Toast from "../../components/toast.mjs"
 
 const template = document.createElement('template');
 template.innerHTML = `
