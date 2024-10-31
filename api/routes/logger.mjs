@@ -77,6 +77,10 @@ export default (app) => {
     }
   });
 
+  route.get('/request/:id', permission("logger.read"), lookupType(Request, "request"), (req, res) => {
+    res.json({...res.locals.request.toObj(), body: res.locals.request.body, query: res.locals.request.query})
+  })
+
   route.get('/setup', permission("logger.read"), (req, res, next) => {
     res.json(Setup.lookup().toObj())
   });

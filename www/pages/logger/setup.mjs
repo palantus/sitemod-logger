@@ -8,7 +8,7 @@ import "../../components/field-ref.mjs"
 import "../../components/context-menu.mjs"
 import "../../components/action-bar.mjs"
 import "../../components/action-bar-item.mjs"
-import {showDialog} from "../../components/dialog.mjs"
+import {showDialog, alertDialog} from "../../components/dialog.mjs"
 import Toast from "../../components/toast.mjs"
 import { stylesheets } from "../../system/core.mjs"
 
@@ -77,6 +77,7 @@ template.innerHTML = `
                 <th>Path</th>
                 <th>User</th>
                 <th>Instance</th>
+                <th></th>
               </tr>
           </thead>
           <tbody id="stream" class="container">
@@ -124,6 +125,20 @@ class Element extends HTMLElement {
           api.del(`logger/routes/${id}`).then(this.refreshData);
           break;
       }
+    })
+    
+    this.shadowRoot.getElementById("stream-tab").addEventListener("click", async e => {
+      if(!e.target.classList.contains("details-btn")) return;
+      let id = e.target.closest("tr")?.getAttribute("data-id");
+      if(!id) return;
+      let req = await api.get(`logger/request/${id}`);
+      if(!req) return alertDialog("Not found");
+      await alertDialog(`
+        Body:<br>
+        <pre>${JSON.stringify(req.body, null, 2)}</pre>
+        Query:<br>
+        <pre>${JSON.stringify(req.query, null, 2)}</pre>
+      `);
     })
   }
 
@@ -178,12 +193,13 @@ class Element extends HTMLElement {
     let log = await api.post("logger/requests/query", {last: 15})
     log.reverse()
     this.shadowRoot.getElementById("stream").innerHTML = log.map(r => `
-      <tr class="result">
+      <tr class="result" data-id="${r.id}">
         <td>${r.timestamp.replace("T", " ").substring(0, 19)}</td>
         <td>${r.method}</td>
         <td>${r.path}</td>
         <td>${r.userId||""}</td>
         <td>${r.instance||""}</td>
+        <td><button class="details-btn">Details</button></td>
       </tr>
       `).join("")
   }
