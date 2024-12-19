@@ -69,6 +69,7 @@ async function runJob(){
       requestCache = requestCache.slice(count)
     } catch(err){
       new LogEntry(`Failed to send logs to remote. Will attempt again next time and not clear cache. Error: ${JSON.stringify(err)}`, "logger")
+      return;
     }
   } else {
     for(let entry of requests){
